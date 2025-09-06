@@ -1,0 +1,14 @@
+{
+  "name": "plateau-streaming",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "start:port": "node server.mjs --port %PORT% --dir %DATA_DIR%"
+  }
+}
+

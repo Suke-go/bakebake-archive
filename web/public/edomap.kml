@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>
+      <![CDATA[〔江戸切絵図〕. 芝愛宕下絵図]]>
+    </name>
+    <Style>
+      <ListStyle>
+        <listItemType>checkHideChildren</listItemType>
+      </ListStyle>
+    </Style>
+    <NetworkLink>
+      <Region>
+        <LatLonAltBox>
+          <north>35.67775506978166</north>
+          <south>35.642220906573385</south>
+          <east>139.78001585721736</east>
+          <west>139.72622998785428</west>
+        </LatLonAltBox>
+        <Lod>
+          <minLodPixels>128</minLodPixels>
+          <maxLodPixels>-1</maxLodPixels>
+        </Lod>
+      </Region>
+      <Link>
+        <viewRefreshMode>onRequest</viewRefreshMode>
+        <href>http://mapwarper.h-gis.jp/maps/4907.kml?DBOX=139.72622998785428,35.642220906573385,139.78001585721736,35.67775506978166,1</href>
+      </Link>
+    </NetworkLink>
+  </Document>
+</kml>
