@@ -1,0 +1,48 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [139.7499, 35.6664]
+      },
+      "properties": {
+        "title": "虎ノ門ヒルズ（デモ）",
+        "description": "Supabase不要の静的GeoJSONファイルから読み込んでいます。",
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Toranomon_Hills_Mori_Tower_20140714.jpg/320px-Toranomon_Hills_Mori_Tower_20140714.jpg",
+        "color": "#ff3366",
+        "scale": 1.2
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [136.8978, 35.1844]
+      },
+      "properties": {
+        "title": "名古屋城（デモ）",
+        "description": "JSONファイルに追記するだけでピンが増やせます。",
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Nagoya_Castle_02.jpg/320px-Nagoya_Castle_02.jpg",
+        "color": "#44aaee",
+        "scale": 1.0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [136.9066, 35.1709]
+      },
+      "properties": {
+        "title": "名古屋テレビ塔",
+        "description": "久屋大通公園にあります。",
+        "image_url": "",
+        "color": "#ffa500",
+        "scale": 0.8
+      }
+    }
+  ]
+}
+

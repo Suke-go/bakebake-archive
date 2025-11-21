@@ -14,12 +14,6 @@ const PLATEAU_URL = (import.meta as any).env.VITE_PLATEAU_3DTILES_URL as
 const PLATEAU_URLS = (import.meta as any).env.VITE_PLATEAU_3DTILES_URLS as
   | string
   | undefined;
-const SUPABASE_URL = (import.meta as any).env.VITE_SUPABASE_URL as
-  | string
-  | undefined;
-const SUPABASE_ANON_KEY = (import.meta as any).env.VITE_SUPABASE_ANON_KEY as
-  | string
-  | undefined;
 
 // Pin visual defaults
 const PIN_BASE_SIZE = 96; // px
@@ -46,8 +40,21 @@ const viewer = new Cesium.Viewer("cesiumContainer", {
   terrain: ION_TOKEN ? Cesium.Terrain.fromWorldTerrain() : (getEllipsoidTerrain() as any),
 });
 
-// 虎ノ門（おおよそ虎ノ門ヒルズ周辺）を中心に、半径10kmの範囲へ初期表示
-const center = { lon: 139.7499, lat: 35.6664 };
+// デフォルト値（虎ノ門周辺）。app_config.json で上書き可能。
+let center = { lon: 139.7499, lat: 35.6664 };
+
+async function loadAppConfig() {
+  try {
+    const res = await fetch("/app_config.json");
+    if (!res.ok) return;
+    const config = await res.json();
+    if (config.initialCenter) {
+      center = config.initialCenter;
+    }
+  } catch (e) {
+    console.warn("Failed to load app_config.json, using default center.", e);
+  }
+}
 
 function rectangleFromCenter(
   lonDeg: number,
@@ -80,8 +87,8 @@ viewer.camera.setView({
   destination: Cesium.Cartesian3.fromDegrees(0, 0, 40_000_000),
 });
 
-// カメラ演出: 1) 全地球 → 2) 虎ノ門を真上から → 3) 虎ノ門中心のままチルト
-async function flyToToranomonSequence() {
+// カメラ演出: 1) 全地球 → 2) 指定座標を真上から → 3) 指定座標中心のままチルト
+async function flyToInitialPositionSequence() {
   const target = Cesium.Cartesian3.fromDegrees(center.lon, center.lat, 0);
   const bs = new Cesium.BoundingSphere(target, 150);
 
@@ -129,7 +136,7 @@ async function flyToToranomonSequence() {
 }
 
 // イントロの全画面画像を一定時間表示してから解消
-function showIntroOverlay(durationMs = 2000): Promise<void> {
+function showIntroOverlay(durationMs = 5000): Promise<void> {
   return new Promise((resolve) => {
     try {
       const overlay = document.createElement("div");
@@ -142,7 +149,9 @@ function showIntroOverlay(durationMs = 2000): Promise<void> {
         alignItems: "center",
         justifyContent: "center",
         zIndex: "9999",
+        transition: "opacity 3s ease-in-out, filter 3s ease-in-out", // 長めのフェード
       } as CSSStyleDeclaration);
+
       const img = document.createElement("img");
       img.src = new URL("../img/intro.png", import.meta.url).href;
       Object.assign(img.style, {
@@ -152,10 +161,19 @@ function showIntroOverlay(durationMs = 2000): Promise<void> {
       } as CSSStyleDeclaration);
       overlay.appendChild(img);
       document.body.appendChild(overlay);
+
+      // アニメーション演出
+      setTimeout(() => {
+        // 消えるときにぼかしを入れる（お化けが消える感じ）
+        overlay.style.opacity = "0";
+        overlay.style.filter = "blur(20px) grayscale(100%)";
+      }, durationMs);
+
+      // 完全に消えた後にDOM削除
       setTimeout(() => {
         overlay.remove();
         resolve();
-      }, durationMs);
+      }, durationMs + 3000); // transition time(3s) + buffer
     } catch {
       resolve();
     }
@@ -254,64 +272,10 @@ function startGeolocation() {
   }
 }
 
-// GeoJSON loader for pins from Supabase PostgREST RPC
+// GeoJSON loader for pins from local JSON
 let placesDataSource: Cesium.GeoJsonDataSource | null = null;
 let baseImageryLayer: Cesium.ImageryLayer | null = null;
 let edoKmlDs: Cesium.KmlDataSource | null = null;
-
-function computeBboxDegrees(rect: Cesium.Rectangle | undefined) {
-  if (!rect) {
-    // fallback around center (~0.2 deg ~ 20km)
-    const latDelta = 0.18;
-    const lonDelta = 0.22;
-    return {
-      lon_min: center.lon - lonDelta,
-      lat_min: center.lat - latDelta,
-      lon_max: center.lon + lonDelta,
-      lat_max: center.lat + latDelta,
-    };
-  }
-  let west = Cesium.Math.toDegrees(rect.west);
-  let south = Cesium.Math.toDegrees(rect.south);
-  let east = Cesium.Math.toDegrees(rect.east);
-  let north = Cesium.Math.toDegrees(rect.north);
-  // normalize longitudes
-  if (east < west) {
-    const tmp = east;
-    east = west;
-    west = tmp;
-  }
-  return { lon_min: west, lat_min: south, lon_max: east, lat_max: north };
-}
-
-async function fetchPlacesGeoJSON(bbox: {
-  lon_min: number;
-  lat_min: number;
-  lon_max: number;
-  lat_max: number;
-}) {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
-  const url = new URL(`${SUPABASE_URL}/rest/v1/rpc/places_geojson`);
-  url.searchParams.set("lon_min", String(bbox.lon_min));
-  url.searchParams.set("lat_min", String(bbox.lat_min));
-  url.searchParams.set("lon_max", String(bbox.lon_max));
-  url.searchParams.set("lat_max", String(bbox.lat_max));
-  try {
-    const res = await fetch(url.toString(), {
-      method: "GET",
-      headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        Accept: "application/json",
-      } as any,
-    });
-    if (!res.ok) throw new Error(`RPC failed: ${res.status}`);
-    return (await res.json()) as any;
-  } catch (e) {
-    console.warn("fetchPlacesGeoJSON error", e);
-    return null;
-  }
-}
 
 function escapeHtml(s: any): string {
   const t = String(s ?? "");
@@ -326,17 +290,17 @@ function escapeHtml(s: any): string {
 function buildDescriptionHTML(props: any) {
   const title = escapeHtml(props?.title);
   const desc = escapeHtml(props?.description);
-  const img = props?.primary_image_url ? `<img src="${props.primary_image_url}" style="max-width:100%;max-height:240px;object-fit:contain;"/>` : "";
+  const imgUrl = props?.image_url || props?.primary_image_url;
+  const img = imgUrl ? `<img src="${imgUrl}" style="max-width:100%;max-height:240px;object-fit:contain;"/>` : "";
   return `${img}<div style="margin-top:8px"><strong>${title}</strong></div><div style="margin-top:4px">${desc}</div>`;
 }
 
 async function loadPinsOnce() {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return;
-  const rect = viewer.camera.computeViewRectangle();
-  const bbox = computeBboxDegrees(rect);
-  const fc = await fetchPlacesGeoJSON(bbox);
-  if (!fc) return;
   try {
+    const res = await fetch("/places.json");
+    if (!res.ok) return;
+    const fc = await res.json();
+    
     const ds = await Cesium.GeoJsonDataSource.load(fc, { clampToGround: true });
     // replace previous layer
     if (placesDataSource) viewer.dataSources.remove(placesDataSource, true);
@@ -350,7 +314,7 @@ async function loadPinsOnce() {
     const entities = ds.entities.values;
     for (const e of entities) {
       const p: any = (e as any).properties?.getValue?.(new Date()) ?? (e as any).properties;
-      const primary = p?.primary_image_url as string | undefined;
+      const primary = p?.image_url || p?.primary_image_url as string | undefined;
       const fallbackIcon = new URL("../img/BAKEBAKE_XR.png", import.meta.url).href;
       const imgUrl = primary || p?.icon_url || fallbackIcon;
       const colorCss = p?.color || "#ffffff";
@@ -571,13 +535,15 @@ function setupModeControls() {
 
 // 3Dタイルのロード（PLATEAU → Google Photorealistic → OSM Buildings の順で試行）
 (async () => {
+  await loadAppConfig();
+
   let loaded = false;
 
   // カメラ演出を開始（タイルのロードとは独立）
-  // Start intro image for 2s, then run camera sequence (next frame)
+  // Start intro image for 5s, then run camera sequence (next frame)
   requestAnimationFrame(() => {
-    showIntroOverlay(2000).then(async () => {
-      flyToToranomonSequence().catch(() => {});
+    showIntroOverlay(5000).then(async () => {
+      flyToInitialPositionSequence().catch(() => {});
       // Load pins once for the initial view
       await loadPinsOnce();
       // Start GPS tracking

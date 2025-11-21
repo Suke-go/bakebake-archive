@@ -1,0 +1,40 @@
+[general]
+enable_bucket = true
+bucket_resolution_steps = 64
+pretrained_model_name_or_path = "/workspace/models/sd_xl_base_1.0.safetensors"
+output_dir = "/workspace/output/yokai-lora"
+logging_dir = "/workspace/output/logs"
+save_model_as = "safetensors"
+save_every_n_steps = 500
+mixed_precision = "bf16"
+
+[dataset_arguments]
+train_data_dir = "/workspace/datasets/yokai/train"
+caption_extension = ".txt"
+resolution = "1024,1024"
+color_aug = false
+shuffle_caption = true
+keep_tokens = 1
+caption_dropout_every_n_epochs = 1
+
+[training_arguments]
+train_batch_size = 2
+max_train_steps = 4000
+gradient_accumulation_steps = 2
+learning_rate = 1e-4
+lr_scheduler = "cosine"
+optimizer_type = "AdamW8bit"
+xformers = true
+min_snr_gamma = 5.0
+
+[network_arguments]
+network_module = "networks.lora"
+network_dim = 64
+network_alpha = 32
+
+[sample_prompt]
+prompts = [
+  "masterpiece, yokai style, intricate brush strokes, detailed character portrait, 8k",
+  "floating yokai spirit, ukiyo-e inspired, watery ink, cinematic lighting"
+]
+

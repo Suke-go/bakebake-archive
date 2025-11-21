@@ -16,12 +16,13 @@
 ```
 cd web
 npm install
-cp .env.example .env
-# 必要に応じて .env を編集
+# 下記の「.env keys」を参考に .env ファイルを作成
 npm run dev
 ```
 
 ## .env keys
+`.env` ファイルを `web/` ディレクトリ直下に作成し、以下の変数を設定してください。
+
 - `VITE_PLATEAU_3DTILES_URL`: PLATEAU の 3D Tiles `tileset.json` への URL。
   - 例: `https://<host>/plateau/tokyo_minato/tileset.json`
   - 注意: 公開サーバを利用する場合は CORS 設定が必要です。
@@ -31,24 +32,36 @@ npm run dev
   - Google Cloud で Map Tiles API を有効化してください。
 - `VITE_CESIUM_ION_ACCESS_TOKEN`: OSM Buildings や World Terrain を使うためのトークン。
 
-## What’s inside
-- `index.html`: `#cesiumContainer` を全画面表示
-- `src/main.ts`: ビューア作成、虎ノ門中心 (35.6664, 139.7499)、半径10km矩形へ初期移動
-  - PLATEAU / Google Photorealistic / OSM Buildings を順に試行
-- `vite.config.ts`: `vite-plugin-cesium` 設定
+## ピン情報の編集 (GeoJSON)
+地図上に表示されるピンの情報は `public/places.json` で管理されています。
+このファイルは標準的な GeoJSON フォーマットです。テキストエディタで編集することで、ピンの追加・削除・変更が可能です。
 
-## Notes on PLATEAU
-- PLATEAU（国土交通省）配布の 3D 都市モデルは、自治体単位で CityGML/3D Tiles が公開されています。
-- 単一の全国共通タイルエンドポイントはなく、配布・ホスティング主体により URL や CORS 設定が異なります。
-- 既存の公開タイルを参照する場合は、`tileset.json` 直リンクと CORS 許可が前提です。難しい場合はローカル or 自前ホスティングをご検討ください（静的ホスティングで `tileset.json` とバイナリ一式を配置）。
-- この雛形は `VITE_PLATEAU_3DTILES_URL` もしくは `VITE_PLATEAU_3DTILES_URLS` を指定すれば自動的に読み込みます。
+### データ構造例
+```json
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [139.7499, 35.6664]
+      },
+      "properties": {
+        "title": "場所の名前",
+        "description": "説明文",
+        "image_url": "https://example.com/image.jpg",
+        "color": "#ff3366",
+        "scale": 1.0
+      }
+    }
+  ]
+}
+```
 
-### ローカルにホストする方法（推奨）
-1. PLATEAUの3D Tiles（zip）を入手し解凍。
-2-a. 簡易: `web/public/plateau/<area>/` に配置 → `.env` に `/plateau/<area>/tileset.json`
-2-b. 本番想定: `plateau-streaming/` のサーバを使い `http://localhost:8080/<area>/tileset.json`
-3. `.env` に上記URLを設定。
-4. `npm run dev` で確認。
+- `coordinates`: `[経度, 緯度]` の順で記述します。
+- `image_url`: ピンとして表示する画像の URL。
+- `scale`: ピンの大きさの倍率（デフォルト 1.0）。
 
 ## Camera preset
 - 中心: 虎ノ門付近 (lat: 35.6664, lon: 139.7499)
@@ -60,7 +73,14 @@ npm run build
 npm run preview
 ```
 
-## Next steps
-- ピン表示（GeoJSON 入力）と画像モーダル
-- ズームに応じたクラスタリング
-- 検索・フィルタ、i18n
+## Notes on PLATEAU
+- PLATEAU（国土交通省）配布の 3D 都市モデルは、自治体単位で CityGML/3D Tiles が公開されています。
+- 単一の全国共通タイルエンドポイントはなく、配布・ホスティング主体により URL や CORS 設定が異なります。
+- この雛形は `VITE_PLATEAU_3DTILES_URL` もしくは `VITE_PLATEAU_3DTILES_URLS` を指定すれば自動的に読み込みます。
+
+### ローカルにホストする方法（推奨）
+1. PLATEAUの3D Tiles（zip）を入手し解凍。
+2-a. 簡易: `web/public/plateau/<area>/` に配置 → `.env` に `/plateau/<area>/tileset.json`
+2-b. 本番想定: `plateau-streaming/` のサーバを使い `http://localhost:8080/<area>/tileset.json`
+3. `.env` に上記URLを設定。
+4. `npm run dev` で確認。

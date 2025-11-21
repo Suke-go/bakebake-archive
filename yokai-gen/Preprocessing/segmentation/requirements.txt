@@ -1,0 +1,14 @@
+gradio
+opencv-python
+numpy
+torch
+torchvision
+Pillow
+# The following are for Grounded-Segment-Anything dependencies, 
+# but usually it's better to install them via their own setup.py or requirements.
+transformers
+accelerate
+scipy
+safetensors
+diffusers
+
