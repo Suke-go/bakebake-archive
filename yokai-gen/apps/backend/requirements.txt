@@ -1,0 +1,14 @@
+accelerate==0.30.0
+diffusers==0.28.0
+fastapi==0.111.0
+huggingface-hub==0.23.2
+numpy==1.26.4
+pillow==10.3.0
+pydantic==2.7.1
+pydantic-settings==2.2.1
+safetensors==0.4.2
+torch==2.2.2
+transformers==4.40.2
+uvicorn[standard]==0.30.0
+pytest==8.2.0
+

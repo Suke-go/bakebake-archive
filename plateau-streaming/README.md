@@ -5,7 +5,17 @@
 ## ディレクトリ構成
 ```
 plateau-streaming/
-  data/                # ← ここに tileset.json とバイナリ一式を配置
+  data/
+    nagoya/
+      higashi-ku/
+        tileset.json
+        data/...
+      nishi-ku/
+      nakamura-ku/
+      naka-ku/
+      nakagawa-ku/
+      minato-ku/
+    tokyo/ ...         # ← 必要に応じて追加
   server.mjs           # Node 18+ の静的配信サーバ
   package.json
   docker-compose.yml   # （任意）Nginx で配信
@@ -13,7 +23,9 @@ plateau-streaming/
 ```
 
 ## 使い方（Node）
-1. `plateau-streaming/data/` に PLATEAU の 3D Tiles を展開（`tileset.json` が直下 or サブディレクトリにある）
+1. `plateau-streaming/data/` 配下に都市名（例: `nagoya`）のディレクトリを作り、区・エリア単位で 3D Tiles を配置します。
+   - 例: `plateau-streaming/data/nagoya/naka-ku/tileset.json`
+   - 各区の zip を解凍し、`tileset.json` と `data/` ディレクトリをそのまま置けばOKです。
 2. 実行:
    ```powershell
    cd plateau-streaming
@@ -22,7 +34,28 @@ plateau-streaming/
    # もしくは環境変数: PORT=8080 DATA_DIR=./data node server.mjs
    ```
 3. フロントの `.env` に URL を設定:
-   - 例: `VITE_PLATEAU_3DTILES_URL=http://localhost:8080/minato/tileset.json`
+   - 例: `VITE_PLATEAU_3DTILES_URLS=http://localhost:8080/nagoya/naka-ku/tileset.json`
+   - 複数区を読み込みたい場合はカンマ区切りで列挙します。
+
+## 常駐運用（PM2 例）
+開発マシンでタイル配信を常駐させたい場合は、`pm2.config.cjs` を利用すると簡単にバックグラウンド化できます。
+
+```powershell
+cd plateau-streaming
+npx pm2 start pm2.config.cjs   # 初回起動
+npx pm2 save                   # 再起動後も復元する場合
+# 状態確認
+npx pm2 ls
+# 停止
+npx pm2 stop plateau-streaming
+```
+
+環境変数（ポートやデータディレクトリ）を変更したいときは以下のいずれかを利用してください。
+
+- `npx pm2 start pm2.config.cjs --env PORT=19090 --env DATA_DIR=C:/tiles`
+- もしくは `pm2.config.cjs` の `env` セクションを直接編集
+
+`pm2 resurrect` / `pm2 save` を組み合わせれば OS 再起動後も自動で復旧します。
 
 ## 使い方（Docker/Nginx・任意）
 1. `data/` に 3D Tiles を配置

@@ -14,6 +14,8 @@ const PLATEAU_URL = (import.meta as any).env.VITE_PLATEAU_3DTILES_URL as
 const PLATEAU_URLS = (import.meta as any).env.VITE_PLATEAU_3DTILES_URLS as
   | string
   | undefined;
+const YOKAI_GEN_URL = (import.meta as any).env
+  .VITE_YOKAI_GENERATOR_URL as string | undefined;
 
 // Pin visual defaults
 const PIN_BASE_SIZE = 96; // px
@@ -42,6 +44,13 @@ const viewer = new Cesium.Viewer("cesiumContainer", {
 
 // デフォルト値（虎ノ門周辺）。app_config.json で上書き可能。
 let center = { lon: 139.7499, lat: 35.6664 };
+const HOME_ALTITUDE_M = 2500;
+const DEFAULT_JAPAN_RECTANGLE = Cesium.Rectangle.fromDegrees(128, 30, 146, 46);
+type TimeMode = "now" | "past";
+type UiAction = "yokai" | "japan" | "home" | "nearby";
+let currentTimeMode: TimeMode = "now";
+let yokaiGeneratorUrl: string | undefined = YOKAI_GEN_URL;
+let japanOverviewRectangle: Cesium.Rectangle = DEFAULT_JAPAN_RECTANGLE;
 
 async function loadAppConfig() {
   try {
@@ -51,9 +60,34 @@ async function loadAppConfig() {
     if (config.initialCenter) {
       center = config.initialCenter;
     }
+    if (config.yokaiGeneratorUrl) {
+      yokaiGeneratorUrl = config.yokaiGeneratorUrl;
+    }
+    if (isRectangleConfig(config.japanOverview)) {
+      japanOverviewRectangle = Cesium.Rectangle.fromDegrees(
+        config.japanOverview.west,
+        config.japanOverview.south,
+        config.japanOverview.east,
+        config.japanOverview.north
+      );
+    }
   } catch (e) {
     console.warn("Failed to load app_config.json, using default center.", e);
   }
+}
+
+type RectangleConfig = {
+  west: number;
+  south: number;
+  east: number;
+  north: number;
+};
+
+function isRectangleConfig(value: any): value is RectangleConfig {
+  if (!value || typeof value !== "object") return false;
+  return ["west", "south", "east", "north"].every(
+    (key) => typeof value[key] === "number"
+  );
 }
 
 function rectangleFromCenter(
@@ -133,6 +167,115 @@ async function flyToInitialPositionSequence() {
     new Cesium.HeadingPitchRange(0, -Cesium.Math.PI_OVER_FOUR, 2500),
     2.5
   );
+}
+
+type CameraViewState = {
+  destination: Cesium.Cartesian3;
+  orientation: {
+    heading: number;
+    pitch: number;
+    roll: number;
+  };
+};
+
+const TILE_WARMUP_OFFSETS = [
+  { lonOffset: 0, latOffset: 0, heading: 0, pitch: -Cesium.Math.PI_OVER_FOUR },
+  {
+    lonOffset: 0.01,
+    latOffset: 0.002,
+    heading: Cesium.Math.PI_OVER_TWO,
+    pitch: -Cesium.Math.PI_OVER_THREE,
+  },
+  {
+    lonOffset: -0.012,
+    latOffset: -0.003,
+    heading: Cesium.Math.PI,
+    pitch: -Cesium.Math.PI_OVER_SIX,
+  },
+  {
+    lonOffset: 0.004,
+    latOffset: -0.015,
+    heading: Cesium.Math.PI * 1.5,
+    pitch: -Cesium.Math.PI_OVER_FOUR,
+  },
+];
+
+function captureCameraView(camera: Cesium.Camera): CameraViewState {
+  return {
+    destination: Cesium.Cartesian3.clone(camera.positionWC),
+    orientation: {
+      heading: camera.heading,
+      pitch: camera.pitch,
+      roll: camera.roll,
+    },
+  };
+}
+
+function getTileWarmupViews(baseCenter: { lon: number; lat: number }) {
+  return TILE_WARMUP_OFFSETS.map((offset, idx) => ({
+    destination: Cesium.Cartesian3.fromDegrees(
+      baseCenter.lon + offset.lonOffset,
+      baseCenter.lat + offset.latOffset,
+      1500 + idx * 450
+    ),
+    orientation: {
+      heading: offset.heading,
+      pitch: offset.pitch,
+      roll: 0,
+    },
+  }));
+}
+
+function waitForTilesetToSettle(
+  tileset: Cesium.Cesium3DTileset,
+  timeoutMs = 4500
+) {
+  const scene = viewer.scene;
+  return new Promise<boolean>((resolve) => {
+    const start = performance.now();
+    const remove = scene.postRender.addEventListener(() => {
+      if (tileset.isDestroyed()) {
+        remove();
+        resolve(false);
+        return;
+      }
+      const stats = (tileset as any).statistics;
+      if (
+        stats &&
+        stats.numberOfPendingRequests === 0 &&
+        stats.numberOfTilesProcessing === 0
+      ) {
+        remove();
+        resolve(true);
+        return;
+      }
+      if (performance.now() - start > timeoutMs) {
+        remove();
+        resolve(false);
+      }
+    });
+    scene.requestRender();
+  });
+}
+
+async function preloadTilesetAroundCenter(
+  tileset: Cesium.Cesium3DTileset,
+  preloadCenter = center
+) {
+  try {
+    const camera = viewer.scene.camera;
+    const saved = captureCameraView(camera);
+    const warmupViews = getTileWarmupViews(preloadCenter);
+    for (const view of warmupViews) {
+      camera.setView(view);
+      viewer.scene.requestRender();
+      await waitForTilesetToSettle(tileset, 5000);
+    }
+    camera.setView(saved);
+    viewer.scene.requestRender();
+  } catch (e) {
+    console.warn("Tileset preload skipped", e);
+  }
 }
 
 // イントロの全画面画像を一定時間表示してから解消
@@ -503,33 +646,193 @@ function hideEdoOverlay() {
   if (edoKmlDs) edoKmlDs.show = false;
 }
 
-function setActiveModeButton(mode: string) {
-  const root = document.getElementById('modeControls');
+// ------------------------
+// Camera helpers & UI actions
+// ------------------------
+function cameraFlyTo(
+  options: Cesium.Camera.FlightOptions & {
+    destination: Cesium.Cartesian3 | Cesium.Rectangle;
+  }
+): Promise<void> {
+  return new Promise((resolve) => {
+    const prev = viewer.scene.requestRenderMode;
+    viewer.scene.requestRenderMode = false;
+    try {
+      viewer.camera.flyTo({
+        ...options,
+        complete: () => {
+          viewer.scene.requestRenderMode = prev;
+          viewer.scene.requestRender();
+          resolve();
+        },
+        cancel: () => {
+          viewer.scene.requestRenderMode = prev;
+          resolve();
+        },
+      });
+    } catch (e) {
+      viewer.scene.requestRenderMode = prev;
+      console.warn("cameraFlyTo failed", e);
+      resolve();
+    }
+  });
+}
+
+async function flyToJapanOverview() {
+  await cameraFlyTo({
+    destination: japanOverviewRectangle,
+    duration: 3.0,
+    orientation: {
+      heading: viewer.camera.heading,
+      pitch: -Cesium.Math.PI_OVER_THREE,
+      roll: 0,
+    },
+  });
+}
+
+async function flyToHomePosition() {
+  const destination = Cesium.Cartesian3.fromDegrees(
+    center.lon,
+    center.lat,
+    HOME_ALTITUDE_M
+  );
+  await cameraFlyTo({
+    destination,
+    duration: 2.5,
+    orientation: {
+      heading: viewer.camera.heading,
+      pitch: -Cesium.Math.PI_OVER_FOUR,
+      roll: 0,
+    },
+  });
+}
+
+function getViewCenterCartographic(): Cesium.Cartographic | null {
+  const scene = viewer.scene;
+  const canvas = scene.canvas;
+  const pickRay = viewer.camera.getPickRay(
+    new Cesium.Cartesian2(canvas.clientWidth / 2, canvas.clientHeight / 2)
+  );
+  if (pickRay) {
+    const pickPosition = scene.globe.pick(pickRay, scene);
+    if (pickPosition) {
+      return Cesium.Cartographic.fromCartesian(pickPosition);
+    }
+  }
+  try {
+    return Cesium.Cartographic.fromCartesian(viewer.camera.positionWC);
+  } catch {
+    return null;
+  }
+}
+
+async function flyToNearestYokai() {
+  if (!placesDataSource) {
+    console.warn("placesDataSource is not ready.");
+    return;
+  }
+  const centerCarto = getViewCenterCartographic();
+  if (!centerCarto) return;
+  const centerCartesian = Cesium.Cartesian3.fromRadians(
+    centerCarto.longitude,
+    centerCarto.latitude,
+    0
+  );
+  const now = Cesium.JulianDate.now();
+  let nearest: Cesium.Entity | null = null;
+  let minDistance = Number.POSITIVE_INFINITY;
+  for (const entity of placesDataSource.entities.values) {
+    const pos = entity.position?.getValue(now);
+    if (!pos) continue;
+    const d = Cesium.Cartesian3.distance(centerCartesian, pos);
+    if (d < minDistance) {
+      minDistance = d;
+      nearest = entity;
+    }
+  }
+  if (!nearest) {
+    alert("近くの妖怪が見つかりませんでした。");
+    return;
+  }
+  try {
+    await viewer.flyTo(nearest, {
+      duration: 3.0,
+      offset: new Cesium.HeadingPitchRange(0, -Cesium.Math.PI_OVER_FOUR, 800),
+    });
+  } catch (e) {
+    console.warn("Failed to fly to nearest yokai", e);
+  } finally {
+    viewer.scene.requestRender();
+  }
+}
+
+async function handleUiAction(action: UiAction) {
+  switch (action) {
+    case "yokai":
+      if (yokaiGeneratorUrl) {
+        window.open(yokaiGeneratorUrl, "_blank", "noopener,noreferrer");
+      } else {
+        alert(
+          "妖怪生成モードのURLが設定されていません。.env の VITE_YOKAI_GENERATOR_URL または app_config.json の yokaiGeneratorUrl を設定してください。"
+        );
+      }
+      break;
+    case "japan":
+      await flyToJapanOverview();
+      break;
+    case "home":
+      await flyToHomePosition();
+      break;
+    case "nearby":
+      await flyToNearestYokai();
+      break;
+    default:
+      break;
+  }
+}
+
+async function setTimeMode(mode: TimeMode) {
+  if (mode === currentTimeMode && baseImageryLayer) {
+    setActiveModeButton(mode);
+    return;
+  }
+  if (mode === "now") {
+    await setAerialBaseImagery();
+    hideEdoOverlay();
+  } else {
+    await setAerialBaseImagery();
+    await showEdoOverlay(0.65);
+  }
+  currentTimeMode = mode;
+  setActiveModeButton(mode);
+  viewer.scene.requestRender();
+}
+
+function setActiveModeButton(mode: TimeMode) {
+  const root = document.getElementById("modeControls");
   if (!root) return;
-  Array.from(root.querySelectorAll('.mode-btn')).forEach((el) => {
-    const m = (el as HTMLElement).dataset.mode;
-    if (m === mode) el.classList.add('active');
-    else el.classList.remove('active');
+  Array.from(root.querySelectorAll(".mode-btn[data-mode]")).forEach((el) => {
+    const m = (el as HTMLElement).dataset.mode as TimeMode | undefined;
+    if (m === mode) el.classList.add("active");
+    else el.classList.remove("active");
   });
 }
 
 function setupModeControls() {
-  const root = document.getElementById('modeControls');
+  const root = document.getElementById("modeControls");
   if (!root) return;
-  root.addEventListener('click', async (ev) => {
-    const t = ev.target as HTMLElement;
-    if (!t || !t.classList.contains('mode-btn')) return;
-    const mode = t.dataset.mode;
-    if (mode === 'aerial') {
-      await setAerialBaseImagery();
-      hideEdoOverlay();
-      setActiveModeButton('aerial');
-    } else if (mode === 'edo') {
-      await setAerialBaseImagery();
-      await showEdoOverlay(0.65);
-      setActiveModeButton('edo');
+  root.addEventListener("click", (ev) => {
+    const t = ev.target as HTMLElement | null;
+    if (!t || !t.classList.contains("mode-btn")) return;
+    const action = t.dataset.action as UiAction | undefined;
+    if (action) {
+      void handleUiAction(action);
+      return;
     }
-    viewer.scene.requestRender();
+    const mode = t.dataset.mode as TimeMode | undefined;
+    if (mode) {
+      void setTimeMode(mode);
+    }
   });
 }
 
@@ -550,8 +853,7 @@ function setupModeControls() {
       startGeolocation();
       // Initialize map mode UI and set default to aerial imagery
       setupModeControls();
-      await setAerialBaseImagery();
-      setActiveModeButton('aerial');
+      await setTimeMode("now");
     });
   });
 
@@ -567,13 +869,18 @@ function setupModeControls() {
   if (PLATEAU_URL) plateauList.push(PLATEAU_URL);
 
   if (plateauList.length > 0) {
-    let anyOk = false;
+    const warmedTilesets: Cesium.Cesium3DTileset[] = [];
     for (let i = 0; i < plateauList.length; i++) {
       const url = plateauList[i];
-      const ok = await addPlateauTiles(url);
-      anyOk = anyOk || ok;
+      const tileset = await addPlateauTiles(url);
+      if (tileset) warmedTilesets.push(tileset);
     }
-    loaded = anyOk;
+    if (warmedTilesets.length > 0) {
+      for (const tileset of warmedTilesets) {
+        await preloadTilesetAroundCenter(tileset, center);
+      }
+      loaded = true;
+    }
   }
 
   if (!loaded && GOOGLE_KEY) {
@@ -593,7 +900,9 @@ function setupModeControls() {
   }
 })();
 
-async function addPlateauTiles(url: string): Promise<boolean> {
+async function addPlateauTiles(
+  url: string
+): Promise<Cesium.Cesium3DTileset | null> {
   try {
     const tileset = await Cesium.Cesium3DTileset.fromUrl(url, {
       // パフォーマンス調整（一般的な推奨値）
@@ -625,10 +934,10 @@ async function addPlateauTiles(url: string): Promise<boolean> {
         )
       );
     } catch {}
-    return true;
+    return tileset;
   } catch (e) {
     console.warn("PLATEAU 3D Tiles load failed:", e);
-    return false;
+    return null;
   }
 }
 

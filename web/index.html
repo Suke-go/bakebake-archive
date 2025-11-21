@@ -98,6 +98,65 @@
         pointer-events: none;
       }
 
+      .control-section {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 16px;
+        border: 1px solid rgba(94, 42, 42, 0.8);
+        background: rgba(8, 0, 0, 0.6);
+        backdrop-filter: blur(4px);
+        border-radius: 10px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      }
+
+      .action-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .section-title {
+        font-size: 0.95rem;
+        letter-spacing: 0.2rem;
+        color: #b88678;
+        text-shadow: 1px 1px 2px #000;
+      }
+
+      .time-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+
+      @media (max-width: 640px) {
+        .mode-controls {
+          right: 12px;
+          left: 12px;
+          gap: 12px;
+        }
+
+        .mode-btn {
+          width: 100%;
+        }
+      }
+
+      .data-credit {
+        position: absolute;
+        right: 16px;
+        bottom: 10px;
+        z-index: 1000;
+        padding: 6px 10px;
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.75);
+        letter-spacing: 0.05rem;
+        background: rgba(5, 0, 0, 0.65);
+        border: 1px solid rgba(94, 42, 42, 0.7);
+        border-radius: 6px;
+        text-align: right;
+        pointer-events: none;
+      }
+
       /* イントロ画面のスタイル (JSから生成される要素用) */
       #introOverlay {
         background-color: #000 !important;
@@ -111,8 +170,24 @@
     <div id="mapOverlay"></div>
     
     <div id="modeControls" class="mode-controls">
-      <button class="mode-btn" data-mode="aerial">現世 (航空写真)</button>
-      <button class="mode-btn" data-mode="edo">古地図 (江戸)</button>
+      <div class="control-section">
+        <div class="action-grid">
+          <button class="mode-btn" data-action="yokai">妖怪生成モード</button>
+          <button class="mode-btn" data-action="japan">日本全土を俯瞰</button>
+          <button class="mode-btn" data-action="home">開始位置に戻る</button>
+          <button class="mode-btn" data-action="nearby">近くの妖怪</button>
+        </div>
+      </div>
+      <div class="control-section" data-section="timeline">
+        <div class="section-title">時系列</div>
+        <div class="time-buttons">
+          <button class="mode-btn" data-mode="now">いま</button>
+          <button class="mode-btn" data-mode="past">むかし</button>
+        </div>
+      </div>
+    </div>
+    <div class="data-credit">
+      画像提供 国際日本文化研究センター「怪異妖怪画像データベース」
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

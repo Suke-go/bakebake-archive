@@ -1,0 +1,63 @@
+.hero {
+  position: relative;
+  padding: 4rem 2rem 2rem;
+  border-radius: 28px;
+  background: rgba(11, 7, 5, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.hero__content {
+  max-width: 540px;
+  color: #f7f2ea;
+}
+
+.hero__eyebrow {
+  letter-spacing: 0.2em;
+  font-size: 0.85rem;
+  color: rgba(247, 242, 234, 0.7);
+  margin-bottom: 0.5rem;
+}
+
+.hero h1 {
+  font-family: "Noto Serif JP", serif;
+  font-size: clamp(2.4rem, 4vw, 3.5rem);
+  line-height: 1.1;
+  margin-bottom: 1rem;
+}
+
+.hero h1 span {
+  color: #f2c14e;
+}
+
+.hero__body {
+  color: rgba(247, 242, 234, 0.85);
+  line-height: 1.7;
+  margin-bottom: 2rem;
+}
+
+.hero__cta {
+  background: linear-gradient(120deg, #c06c3d, #8f3525);
+  color: #f8f5e6;
+  padding: 0.9rem 2.4rem;
+  border-radius: 999px;
+  font-size: 1rem;
+  border: none;
+  cursor: pointer;
+  transition: transform 200ms ease, box-shadow 200ms ease;
+  box-shadow: 0 10px 30px rgba(138, 45, 21, 0.4);
+}
+
+.hero__cta:hover {
+  transform: translateY(-2px);
+}
+
+.hero__glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 70% 30%, rgba(255, 214, 138, 0.25), transparent 50%),
+    radial-gradient(circle at 20% 80%, rgba(152, 189, 166, 0.2), transparent 55%);
+  z-index: -1;
+}
+

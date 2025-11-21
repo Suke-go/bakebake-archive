@@ -17,6 +17,10 @@ web/dist/
 **/.env.*
 web/.env
 
+BigData
+plateau-streaming/data/nagoya
+yokai-gen/Preprocessing/LoRA-making/data-source/picture
+
 # Logs
 npm-debug.log*
 yarn-debug.log*

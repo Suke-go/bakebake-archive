@@ -1,0 +1,184 @@
+@import url("https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600&family=Shippori+Mincho:wght@500&display=swap");
+
+:root {
+  font-family: "Shippori Mincho", "Noto Serif JP", serif;
+  color: #f8f5e6;
+  background-color: #090604;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: #090604;
+  background-image: url("./assets/washi-texture.svg"),
+    radial-gradient(circle at 20% 20%, rgba(255, 214, 138, 0.15), transparent 60%),
+    radial-gradient(circle at 80% 0%, rgba(173, 152, 255, 0.12), transparent 45%);
+  background-size: 400px, auto, auto;
+  background-attachment: fixed;
+}
+
+.app {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.panel {
+  background: rgba(13, 10, 8, 0.85);
+  border-radius: 24px;
+  padding: 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 40px 80px rgba(0, 0, 0, 0.55);
+}
+
+.panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.trait-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.trait-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.95rem;
+}
+
+.trait-selector select {
+  background: rgba(21, 17, 14, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #f7f2ea;
+  padding: 0.6rem 0.8rem;
+  border-radius: 12px;
+  font-family: inherit;
+}
+
+.custom-prompt textarea {
+  width: 100%;
+  min-height: 100px;
+  margin-top: 0.4rem;
+  padding: 0.8rem;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(18, 14, 12, 0.8);
+  color: inherit;
+  font-family: inherit;
+}
+
+.prompt-preview {
+  margin-top: 1.5rem;
+  padding: 1.2rem;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+}
+
+.ghost {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: inherit;
+  padding: 0.5rem 1.4rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.panel__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+}
+
+.panel__grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.panel__lora {
+  margin-top: 1.5rem;
+}
+
+.panel__lora ul {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.5rem;
+  padding: 1rem 0;
+}
+
+.gallery__card {
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.gallery__card img {
+  width: 100%;
+  display: block;
+}
+
+.gallery__card footer {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.7rem 1rem;
+  font-size: 0.85rem;
+  color: rgba(247, 242, 234, 0.7);
+}
+
+.gallery--empty,
+.gallery--loading {
+  text-align: center;
+  color: rgba(247, 242, 234, 0.8);
+}
+
+.muted {
+  color: rgba(247, 242, 234, 0.6);
+  font-size: 0.9rem;
+}
+
+.error {
+  color: #ffb3a7;
+  margin-top: 0.8rem;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .panel,
+  .hero {
+    padding: 1.5rem;
+  }
+  .panel__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
