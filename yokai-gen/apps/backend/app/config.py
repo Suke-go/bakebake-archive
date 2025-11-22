@@ -14,6 +14,9 @@ class Settings(BaseSettings):
 
     model_dir: Path = Path(__file__).resolve().parents[3] / "models" / "base"
     lora_dir: Path = Path(__file__).resolve().parents[3] / "models" / "lora"
+    places_json_path: Path = Path(__file__).resolve().parents[3] / "web" / "public" / "places.json"
+    places_image_dir: Path = Path(__file__).resolve().parents[3] / "web" / "public" / "img" / "yokai"
+    places_image_url_prefix: str = "/img/yokai"
     default_model_subdir: str | None = None
     device_preference: Literal["auto", "cuda", "mps", "cpu"] = "auto"
     enable_xformers: bool = True

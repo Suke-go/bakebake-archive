@@ -8,19 +8,19 @@ export function Hero({ onSurge }: HeroProps) {
   return (
     <section className="hero">
       <div className="hero__content">
-        <p className="hero__eyebrow">妖怪生成アトリエ</p>
+        <p className="hero__eyebrow">Yokai Generator</p>
         <h1>
-          墨の闇から <span>妖し</span> を呼び覚ます
+          記憶の墨を<span>滲ませ</span>、妖怪を呼び起こす
         </h1>
         <p className="hero__body">
-          江戸の夜気、濡れた石畳、微かな灯火。特徴を選ぶだけで、水木しげるの画帳をめくるように妖怪が現れます。
+          舞台・質感・雰囲気を選び、好みの言葉を継ぎ足していくだけ。
+          生成した妖怪はワンクリックで Cesium の地図に保存できます。
         </p>
         <button className="hero__cta" onClick={onSurge}>
-          妖怪を召喚する
+          生成パネルへ進む
         </button>
       </div>
       <div className="hero__glow" aria-hidden="true" />
     </section>
   );
 }
-

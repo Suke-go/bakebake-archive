@@ -43,10 +43,12 @@ const viewer = new Cesium.Viewer("cesiumContainer", {
 });
 
 // デフォルト値（虎ノ門周辺）。app_config.json で上書き可能。
-let center = { lon: 139.7499, lat: 35.6664 };
 const HOME_ALTITUDE_M = 2500;
 const DEFAULT_JAPAN_RECTANGLE = Cesium.Rectangle.fromDegrees(128, 30, 146, 46);
-type TimeMode = "now" | "past";
+// Default center fallback (Tokyo Tower vicinity); app_config.json.initialCenter overrides on load.
+const DEFAULT_CENTER = { lon: 139.7499, lat: 35.6664 };
+let center = DEFAULT_CENTER;
+type TimeMode = "now" | "past" | "all";
 type UiAction = "yokai" | "japan" | "home" | "nearby";
 let currentTimeMode: TimeMode = "now";
 let yokaiGeneratorUrl: string | undefined = YOKAI_GEN_URL;
@@ -119,6 +121,15 @@ viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
 // 地球全体が見える高さに初期化（原点上空 ~40,000km）
 viewer.camera.setView({
   destination: Cesium.Cartesian3.fromDegrees(0, 0, 40_000_000),
+});
+
+const cloudImageUrl = new URL("../img/cloud.png", import.meta.url).href;
+(["cloudTopLeft", "cloudBottomRight"] as const).forEach((id) => {
+  const el = document.getElementById(id) as HTMLImageElement | null;
+  if (el) {
+    el.src = cloudImageUrl;
+    el.loading = "lazy";
+  }
 });
 
 // カメラ演出: 1) 全地球 → 2) 指定座標を真上から → 3) 指定座標中心のままチルト
@@ -438,6 +449,49 @@ function buildDescriptionHTML(props: any) {
   return `${img}<div style="margin-top:8px"><strong>${title}</strong></div><div style="margin-top:4px">${desc}</div>`;
 }
 
+// Normalize era for pins: default to past, but treat youkai-gen sourced pins as "now".
+function normalizeEra(props: any): "now" | "past" {
+  const raw = String(props?.era ?? "").toLowerCase();
+  if (raw === "now" || raw === "present" || raw === "current") return "now";
+  if (raw === "past" || raw === "history" || raw === "historical") return "past";
+  if (
+    props?.source === "yokai-gen" ||
+    props?.source === "youkai-gen" ||
+    props?.origin === "yokai-gen"
+  ) {
+    return "now";
+  }
+  return "past";
+}
+
+function applyEraVisibility(mode: TimeMode) {
+  if (!placesDataSource) return;
+  const now = Cesium.JulianDate.now();
+  const entities = placesDataSource.entities.values;
+  let hasNowEra = false;
+  const eras = new Map<Cesium.Entity, "now" | "past">();
+  for (const e of entities) {
+    const props = (e as any).properties?.getValue?.(now) ?? (e as any).properties ?? {};
+    const era = normalizeEra(props);
+    eras.set(e, era);
+    if (era === "now") hasNowEra = true;
+  }
+  for (const e of entities) {
+    const era = eras.get(e) ?? "past";
+    // "all": show all. "now": show now pins (fall back to all if none). "past": show past pins.
+    const shouldShow =
+      mode === "all"
+        ? true
+        : mode === "now"
+          ? hasNowEra
+            ? era === "now"
+            : true
+          : era !== "now";
+    e.show = shouldShow;
+  }
+  viewer.scene.requestRender();
+}
+
 async function loadPinsOnce() {
   try {
     const res = await fetch("/places.json");
@@ -462,6 +516,14 @@ async function loadPinsOnce() {
       const imgUrl = primary || p?.icon_url || fallbackIcon;
       const colorCss = p?.color || "#ffffff";
       const userScale = Number(p?.scale ?? 1);
+      const era = normalizeEra(p);
+      // Ensure era is stored as normalized value for downstream toggling.
+      const propsBag: any = (e as any).properties;
+      if (propsBag?.addProperty) {
+        try {
+          propsBag.addProperty("era", new Cesium.ConstantProperty(era));
+        } catch {}
+      }
 
       // Make circular image via canvas
       const sizePx = Math.max(32, Math.round(PIN_BASE_SIZE * userScale));
@@ -474,9 +536,9 @@ async function loadPinsOnce() {
       e.billboard.verticalOrigin = Cesium.VerticalOrigin.BOTTOM;
       e.billboard.color = Cesium.Color.fromCssColorString(colorCss);
       e.billboard.disableDepthTestDistance = Number.POSITIVE_INFINITY as any; // draw over tiles
-      // Scale with distance (shrink in the distance)
-      e.billboard.scaleByDistance = new Cesium.NearFarScalar(1000, 1.0, 12000, 0.3);
-      e.billboard.translucencyByDistance = new Cesium.NearFarScalar(2000, 1.0, 20000, 0.2);
+      // Make pins visible from further away (gentler scaling/fade)
+      e.billboard.scaleByDistance = new Cesium.NearFarScalar(800, 1.1, 45000, 0.55);
+      e.billboard.translucencyByDistance = new Cesium.NearFarScalar(4000, 1.0, 48000, 0.35);
 
       // Move billboard slightly above ground and add a leader line
       const now = new Date();
@@ -508,6 +570,7 @@ async function loadPinsOnce() {
 
       e.description = buildDescriptionHTML(p);
     }
+    applyEraVisibility(currentTimeMode);
   } catch (e) {
     console.warn("GeoJSON load/style failed", e);
   }
@@ -792,19 +855,24 @@ async function handleUiAction(action: UiAction) {
 }
 
 async function setTimeMode(mode: TimeMode) {
-  if (mode === currentTimeMode && baseImageryLayer) {
-    setActiveModeButton(mode);
-    return;
-  }
-  if (mode === "now") {
+  // Second click on the same mode toggles to "all" (show both eras).
+  const nextMode = mode === currentTimeMode ? "all" : mode;
+
+  if (nextMode === "now") {
     await setAerialBaseImagery();
     hideEdoOverlay();
-  } else {
+  } else if (nextMode === "past") {
     await setAerialBaseImagery();
     await showEdoOverlay(0.65);
+  } else {
+    // "all" -> prefer modern aerial, hide overlay to keep view clear
+    await setAerialBaseImagery();
+    hideEdoOverlay();
   }
-  currentTimeMode = mode;
-  setActiveModeButton(mode);
+
+  currentTimeMode = nextMode;
+  applyEraVisibility(currentTimeMode);
+  setActiveModeButton(nextMode);
   viewer.scene.requestRender();
 }
 
@@ -813,8 +881,13 @@ function setActiveModeButton(mode: TimeMode) {
   if (!root) return;
   Array.from(root.querySelectorAll(".mode-btn[data-mode]")).forEach((el) => {
     const m = (el as HTMLElement).dataset.mode as TimeMode | undefined;
-    if (m === mode) el.classList.add("active");
-    else el.classList.remove("active");
+    if (mode === "all") {
+      el.classList.remove("active");
+    } else if (m === mode) {
+      el.classList.add("active");
+    } else {
+      el.classList.remove("active");
+    }
   });
 }
 
@@ -836,6 +909,176 @@ function setupModeControls() {
   });
 }
 
+// ------------------------
+// Entity description popup (double-click / double-tap)
+// ------------------------
+let infoOverlayEl: HTMLDivElement | null = null;
+let infoContentEl: HTMLDivElement | null = null;
+let quickInfoEl: HTMLDivElement | null = null;
+let lastFocusedEntity: Cesium.Entity | null = null;
+let cameraViewBeforeDesc: CameraViewState | null = null;
+
+function ensureInfoOverlay() {
+  if (infoOverlayEl) return;
+  infoOverlayEl = document.createElement("div");
+  infoOverlayEl.id = "yokai-info-overlay";
+  Object.assign(infoOverlayEl.style, {
+    position: "fixed",
+    left: "50%",
+    top: "50%",
+    transform: "translate(-50%, -50%)",
+    maxWidth: "640px",
+    width: "calc(100% - 48px)",
+    zIndex: "1200",
+    background: "rgba(8,0,0,0.9)",
+    color: "#f5f5f5",
+    border: "1px solid rgba(255,80,80,0.5)",
+    borderRadius: "12px",
+    boxShadow: "0 18px 44px rgba(0,0,0,0.65)",
+    backdropFilter: "blur(8px)",
+    padding: "18px 16px 16px 16px",
+    fontFamily: "'Yuji Syuku', serif",
+    pointerEvents: "auto",
+  } as CSSStyleDeclaration);
+
+  const closeBtn = document.createElement("button");
+  closeBtn.textContent = "X";
+  Object.assign(closeBtn.style, {
+    position: "absolute",
+    top: "6px",
+    right: "8px",
+    background: "transparent",
+    color: "#f5f5f5",
+    border: "none",
+    fontSize: "20px",
+    cursor: "pointer",
+  } as CSSStyleDeclaration);
+  closeBtn.addEventListener("click", () => {
+    infoOverlayEl?.remove();
+    infoOverlayEl = null;
+    infoContentEl = null;
+    const restoreView = cameraViewBeforeDesc;
+    cameraViewBeforeDesc = null;
+    if (restoreView) {
+      viewer.camera.flyTo(restoreView);
+    }
+  });
+
+  infoContentEl = document.createElement("div");
+  infoContentEl.id = "yokai-info-content";
+  infoContentEl.style.fontSize = "0.95rem";
+  infoContentEl.style.lineHeight = "1.5";
+
+  infoOverlayEl.appendChild(closeBtn);
+  infoOverlayEl.appendChild(infoContentEl);
+  document.body.appendChild(infoOverlayEl);
+}
+
+function showEntityDescription(entity: Cesium.Entity) {
+  const desc = (entity.description as any)?.getValue?.(new Date()) ?? (entity as any).description;
+  if (!desc) return;
+  ensureInfoOverlay();
+  if (infoContentEl) {
+    infoContentEl.innerHTML = desc;
+  }
+}
+
+function ensureQuickInfo() {
+  if (quickInfoEl) return;
+  quickInfoEl = document.createElement("div");
+  quickInfoEl.id = "yokai-quick-info";
+  Object.assign(quickInfoEl.style, {
+    position: "fixed",
+    left: "16px",
+    bottom: "16px",
+    maxWidth: "360px",
+    zIndex: "1100",
+    background: "rgba(8,0,0,0.8)",
+    color: "#f0eaea",
+    border: "1px solid rgba(255,80,80,0.35)",
+    borderRadius: "10px",
+    boxShadow: "0 10px 30px rgba(0,0,0,0.55)",
+    backdropFilter: "blur(4px)",
+    padding: "10px 12px",
+    fontFamily: "'Yuji Syuku', serif",
+    pointerEvents: "none",
+    lineHeight: "1.4",
+  } as CSSStyleDeclaration);
+  document.body.appendChild(quickInfoEl);
+}
+
+function showQuickInfo(entity: Cesium.Entity) {
+  const props: any =
+    (entity as any).properties?.getValue?.(new Date()) ??
+    (entity as any).properties ??
+    {};
+  const title = escapeHtml(props?.title ?? entity.name ?? "");
+  const desc = escapeHtml(props?.description ?? "");
+  const era = escapeHtml(props?.era ?? "");
+  const coords =
+    (entity.position as any)?.getValue?.(new Date()) ??
+    entity.position ??
+    null;
+  let coordText = "";
+  if (coords) {
+    try {
+      const carto = Cesium.Cartographic.fromCartesian(coords);
+      coordText = `${Cesium.Math.toDegrees(carto.longitude).toFixed(4)}, ${Cesium.Math.toDegrees(carto.latitude).toFixed(4)}`;
+    } catch {
+      coordText = "";
+    }
+  }
+  ensureQuickInfo();
+  if (quickInfoEl) {
+    quickInfoEl.innerHTML = `
+      <div style="font-size:1.05rem;margin-bottom:4px;">${title}</div>
+      <div style="font-size:0.9rem;color:#d8c8c8;">${desc}</div>
+      <div style="font-size:0.8rem;color:#aaa;margin-top:6px;">
+        ${era ? `Era: ${era}` : ""}${era && coordText ? " | " : ""}${coordText ? `Coords: ${coordText}` : ""}
+      </div>
+    `;
+  }
+}
+
+async function flyToEntity(entity: Cesium.Entity) {
+  try {
+    await viewer.flyTo(entity, {
+      duration: 2.2,
+      offset: new Cesium.HeadingPitchRange(0, -Cesium.Math.PI_OVER_FOUR, 600),
+    });
+  } catch {
+    // ignore
+  } finally {
+    viewer.scene.requestRender();
+  }
+}
+
+function setupEntityInteractions() {
+  const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+  const pickEntity = (position?: Cesium.Cartesian2) => {
+    const picked = viewer.scene.pick(position);
+    return (picked as any)?.id as Cesium.Entity | undefined;
+  };
+  // Single click / tap: show quick info (no fly)
+  handler.setInputAction((movement) => {
+    const ent = pickEntity(movement.position);
+    if (!ent) return;
+    lastFocusedEntity = ent;
+    showQuickInfo(ent);
+  }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+  // Double click / double tap: fly to + show full description
+  const openDesc = (position?: Cesium.Cartesian2) => {
+    const ent = pickEntity(position);
+    if (!ent) return;
+    cameraViewBeforeDesc = captureCameraView(viewer.scene.camera);
+    lastFocusedEntity = ent;
+    void flyToEntity(ent);
+    showEntityDescription(ent);
+  };
+  handler.setInputAction((movement) => openDesc(movement.position), Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
+  handler.setInputAction((movement) => openDesc(movement.position), Cesium.ScreenSpaceEventType.DOUBLE_TAP);
+}
+
 // 3Dタイルのロード（PLATEAU → Google Photorealistic → OSM Buildings の順で試行）
 (async () => {
   await loadAppConfig();
@@ -853,6 +1096,7 @@ function setupModeControls() {
       startGeolocation();
       // Initialize map mode UI and set default to aerial imagery
       setupModeControls();
+      setupEntityInteractions();
       await setTimeMode("now");
     });
   });

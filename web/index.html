@@ -157,6 +157,47 @@
         pointer-events: none;
       }
 
+      .decor-layer {
+        position: absolute;
+        inset: 0;
+        z-index: 200;
+        pointer-events: none;
+      }
+
+      .cloud {
+        position: absolute;
+        width: min(32vw, 360px);
+        opacity: 0.8;
+        filter: drop-shadow(0 20px 24px rgba(0, 0, 0, 0.35));
+        mix-blend-mode: screen;
+        transition: transform 0.8s ease, opacity 0.8s ease;
+      }
+
+      .cloud-top-left {
+        top: -10px;
+        left: -10px;
+        transform: translate(-20%, -18%) scale(1.02);
+      }
+
+      .cloud-bottom-right {
+        right: 0;
+        bottom: 0;
+        transform: translate(18%, 16%) scale(1.02);
+      }
+
+      .page-title {
+        position: absolute;
+        left: 20px;
+        top: 18px;
+        z-index: 1200;
+        color: #f5e6d0;
+        font-family: 'Yuji Syuku', serif;
+        font-size: clamp(1.6rem, 2vw + 1rem, 2.6rem);
+        letter-spacing: 0.18rem;
+        text-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
+        pointer-events: none;
+      }
+
       /* イントロ画面のスタイル (JSから生成される要素用) */
       #introOverlay {
         background-color: #000 !important;
@@ -168,6 +209,11 @@
     <div id="cesiumContainer"></div>
     <!-- マップ用フィルタレイヤー -->
     <div id="mapOverlay"></div>
+    <div id="decorLayer" class="decor-layer">
+      <img id="cloudTopLeft" class="cloud cloud-top-left" alt="" />
+      <img id="cloudBottomRight" class="cloud cloud-bottom-right" alt="" />
+    </div>
+    <div class="page-title">ばけばけXR</div>
     
     <div id="modeControls" class="mode-controls">
       <div class="control-section">

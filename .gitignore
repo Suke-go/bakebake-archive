@@ -27,6 +27,7 @@ web/dist/
 **/.env.*
 web/.env
 
+
 # Data / model artifacts
 BigData
 plateau-streaming/data/nagoya

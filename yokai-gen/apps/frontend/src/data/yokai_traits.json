@@ -2,98 +2,96 @@
   "defaultNegative": "modern architecture, glossy, neon, cyberpunk, cgi, text, watermark, signature, disfigured, 3d render, plastic",
   "categories": [
     {
-      "id": "species",
-      "label": "妖怪の系譜",
+      "id": "place",
+      "label": "場所",
       "options": [
         {
-          "id": "oni",
-          "label": "鬼",
-          "prompt": "oni yokai, jagged horns, brooding presence, sumi-e ink shadows",
-          "negatives": ["friendly", "chibi", "cartoonish"]
-        },
-        {
-          "id": "yurei",
-          "label": "幽霊",
-          "prompt": "yūrei apparition, trailing white kimono, mist-wrapped figure",
-          "negatives": ["comic", "solid armor"]
-        },
-        {
-          "id": "kappa",
-          "label": "河童",
-          "prompt": "kappa river spirit, damp skin, mossy hues, dripping lotus leaves",
-          "negatives": ["desert", "dry texture"]
-        },
-        {
-          "id": "tsukumogami",
-          "label": "付喪神",
-          "prompt": "tsukumogami animate artifact, timeworn details, subtle glow",
-          "negatives": ["brand new", "shiny plastic"]
-        }
-      ]
-    },
-    {
-      "id": "era",
-      "label": "時代感",
-      "options": [
-        {
-          "id": "edo",
-          "label": "江戸の夜",
-          "prompt": "edo period alley, paper lantern glow, cracked plaster walls"
-        },
-        {
-          "id": "meiji",
-          "label": "明治の霧",
-          "prompt": "meiji dusk, soft industrial smoke, distant train lamps"
+          "id": "sea",
+          "label": "海",
+          "prompt": "seaside shrine, salt mist, seashell charms, horizon haze",
+          "negatives": ["desert", "dry air"]
         },
         {
           "id": "mountain",
-          "label": "山里",
-          "prompt": "mountain shrine, cedar silhouettes, mist weaving through pines"
+          "label": "山",
+          "prompt": "mountain pass cedar shrine, cold wind, distant summit clouds",
+          "negatives": ["urban crowd", "traffic"]
+        },
+        {
+          "id": "city",
+          "label": "都市",
+          "prompt": "narrow backstreets, paper lanterns between wooden eaves, wet stone pavement",
+          "negatives": ["highway", "skyscraper glass"]
         }
       ]
     },
     {
-      "id": "texture",
-      "label": "質感",
+      "id": "time",
+      "label": "時間",
       "options": [
         {
-          "id": "washi",
-          "label": "和紙",
-          "prompt": "fibrous washi texture, layered ink wash, matte surface"
+          "id": "morning",
+          "label": "朝",
+          "prompt": "pale morning light, lingering mist, first crow call"
         },
         {
-          "id": "charcoal",
-          "label": "木炭",
-          "prompt": "charcoal strokes, grainy gradients, smudged edges"
+          "id": "noon",
+          "label": "昼",
+          "prompt": "high sun, crisp shadows, clear air"
         },
         {
-          "id": "rain",
-          "label": "雨粒",
-          "prompt": "fine drizzle, damp air, softened highlights"
+          "id": "night",
+          "label": "夜",
+          "prompt": "moonlit night, deep indigo sky, quiet footsteps"
+        },
+        {
+          "id": "anytime",
+          "label": "いつでも",
+          "prompt": "timeless scene, suspended moment"
         }
       ]
     },
     {
-      "id": "mood",
-      "label": "雰囲気",
+      "id": "shape",
+      "label": "形状",
       "options": [
         {
-          "id": "melancholy",
-          "label": "もの悲しさ",
-          "prompt": "melancholic hush, distant bells, lingering sorrow"
+          "id": "human",
+          "label": "人型",
+          "prompt": "humanoid silhouette, expressive eyes, flowing garments"
         },
         {
-          "id": "feral",
-          "label": "凶気",
-          "prompt": "feral gaze, tense posture, restrained menace"
+          "id": "animal",
+          "label": "動物",
+          "prompt": "beastly posture, furred contours, keen senses"
         },
         {
-          "id": "serene",
-          "label": "静謐",
-          "prompt": "serene stillness, low fog, gentle moonlight"
+          "id": "tool",
+          "label": "道具",
+          "prompt": "animated artifact, worn wood and iron, faint glow in carvings"
+        }
+      ]
+    },
+    {
+      "id": "size",
+      "label": "大きさ",
+      "options": [
+        {
+          "id": "small",
+          "label": "小型",
+          "prompt": "small stature, nimble steps, perches on shoulders"
+        },
+        {
+          "id": "adult",
+          "label": "成人サイズ",
+          "prompt": "human scale presence, balanced proportions"
+        },
+        {
+          "id": "giant",
+          "label": "巨大",
+          "prompt": "towering figure, casts long shadow, weighty footsteps"
         }
       ]
     }
   ]
 }
-

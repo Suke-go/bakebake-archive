@@ -24,4 +24,3 @@ export function TraitSelector({ category, value, onChange }: TraitSelectorProps)
     </label>
   );
 }
-

@@ -69,9 +69,16 @@ class PipelineManager:
         if not self.settings.allow_safety_checker:
             extra_kwargs["safety_checker"] = None
 
+        # Prefer fp16 weights when they exist (e.g. downloaded as *.fp16.safetensors).
+        variant = None
+        fp16_unet = model_path / "unet" / "diffusion_pytorch_model.fp16.safetensors"
+        if fp16_unet.exists():
+            variant = "fp16"
+
         pipe = StableDiffusionXLPipeline.from_pretrained(
             model_path,
             torch_dtype=self.dtype,
+            variant=variant,
             **extra_kwargs,
         )
         pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(pipe.scheduler.config)

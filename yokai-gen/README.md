@@ -24,3 +24,9 @@
 
 `./scripts/dev_all.*` を使えばフロント + バックエンドを同時起動できます。
 
+
+### Cesium 連携 (places.json の更新)
+
+- POST /publish で生成した PNG とメタデータを web/public/places.json と /img/yokai/ に書き出します。
+- 環境変数で上書き: YOKAI_PLACES_JSON_PATH, YOKAI_PLACES_IMAGE_DIR, YOKAI_PLACES_IMAGE_URL_PREFIX
+- フロントのギャラリーで画像を選び「places.json に書き出す」を押すだけで Cesium 側に反映されます。

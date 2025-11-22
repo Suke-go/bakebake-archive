@@ -1,8 +1,10 @@
 .hero {
   position: relative;
-  padding: 4rem 2rem 2rem;
+  padding: 4rem 2rem 2.2rem;
   border-radius: 28px;
-  background: rgba(11, 7, 5, 0.75);
+  background: radial-gradient(circle at 15% 30%, rgba(255, 214, 138, 0.18), transparent 35%),
+    radial-gradient(circle at 70% 0%, rgba(165, 146, 255, 0.16), transparent 40%),
+    rgba(11, 7, 5, 0.75);
   border: 1px solid rgba(255, 255, 255, 0.08);
   overflow: hidden;
   isolation: isolate;

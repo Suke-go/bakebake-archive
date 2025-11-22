@@ -22,5 +22,38 @@ export interface GeneratePayload {
   guidance_scale?: number;
   num_images?: number;
   lora?: string[];
+  seed?: number | null;
+  width?: number;
+  height?: number;
+}
+
+export interface PublishMetadata {
+  title: string;
+  description?: string;
+  longitude: number;
+  latitude: number;
+  altitude?: number;
+  color?: string;
+  scale?: number;
+  era?: "now" | "past";
+  id?: string;
+  source?: string;
+}
+
+export interface PublishPayload {
+  metadata: PublishMetadata;
+  image_base64: string;
+  prompt?: string;
+  negative_prompt?: string;
+  seed?: number;
+  lora?: string[];
+}
+
+export interface PublishResponse {
+  id: string;
+  image_url: string;
+  image_path: string;
+  places_path: string;
+  places_count: number;
 }
 

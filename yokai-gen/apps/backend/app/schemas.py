@@ -46,3 +46,37 @@ class HealthResponse(BaseModel):
     status: Literal["ok"]
     device: str
 
+
+class PlaceMetadata(BaseModel):
+    """Metadata for persisting a generated yokai onto the Cesium map."""
+
+    title: str = Field(..., min_length=1, description="Display title shown in Cesium")
+    description: str | None = Field(default=None, description="Long-form description / lore")
+    longitude: float = Field(..., ge=-180.0, le=180.0)
+    latitude: float = Field(..., ge=-90.0, le=90.0)
+    altitude: float | None = Field(default=0.0)
+    color: str | None = Field(default="#f2c14e", description="CSS color for the pin")
+    scale: float | None = Field(default=1.0, gt=0)
+    era: Literal["now", "past"] = "now"
+    id: str | None = Field(default=None, description="Optional explicit id such as yokai-031")
+    source: str | None = Field(default="yokai-gen")
+
+
+class PublishRequest(BaseModel):
+    """Publish a generated image into the Cesium GeoJSON dataset."""
+
+    metadata: PlaceMetadata
+    image_base64: str = Field(..., description="PNG data (base64, without data URI)")
+    prompt: str | None = None
+    negative_prompt: str | None = None
+    seed: int | None = None
+    lora: list[str] = Field(default_factory=list)
+
+
+class PublishResponse(BaseModel):
+    id: str
+    image_url: str
+    image_path: Path
+    places_path: Path
+    places_count: int
+

@@ -24,11 +24,12 @@ export interface PromptBuildInput {
   selections: SelectionState;
   customPrompt?: string;
   extraAdjectives?: string[];
+  extraNegatives?: string[];
 }
 
 export interface PromptBuildResult {
   prompt: string;
-  negative: string | undefined;
+  negative: string;
 }
 
 export const catalog = traitsData as TraitsCatalog;
@@ -54,6 +55,14 @@ export function buildPrompt(input: PromptBuildInput): PromptBuildResult {
 
   if (input.customPrompt?.trim()) {
     pieces.push(input.customPrompt.trim());
+  }
+
+  if (input.extraNegatives?.length) {
+    negatives.push(
+      ...input.extraNegatives
+        .map((entry) => entry.trim())
+        .filter((entry) => entry.length > 0),
+    );
   }
 
   const prompt = pieces.join(", ");

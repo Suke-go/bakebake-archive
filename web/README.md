@@ -84,3 +84,8 @@ npm run preview
 2-b. 本番想定: `plateau-streaming/` のサーバを使い `http://localhost:8080/<area>/tileset.json`
 3. `.env` に上記URLを設定。
 4. `npm run dev` で確認。
+## Ops (local PLATEAU streaming)
+1. Place 3D Tiles under plateau-streaming/data/ (e.g., plateau-streaming/data/nagoya/<ku>/tileset.json with its data/ folder).
+2. Start server: cd plateau-streaming && node server.mjs --port 8080 --dir ./data (pm2/docker also ok). Confirm access at http://localhost:8080/nagoya/naka-ku/tileset.json.
+3. In `web/.env`, set `VITE_PLATEAU_3DTILES_URLS` to local URLs (e.g., `http://localhost:8080/nagoya/higashi-ku/tileset.json, ...`). Restart `npm run dev` after changes.
+4. For production, rebuild with the env applied: `cd web && npm run build`, then serve `dist/`. Changing URLs requires rebuilding because `.env` is baked at build time.

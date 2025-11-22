@@ -17,7 +17,10 @@ from .schemas import (
     HealthResponse,
     LoraInfo,
     ModelInfo,
+    PublishRequest,
+    PublishResponse,
 )
+from .publisher import publish_yokai
 from .storage import list_base_models, list_lora_weights
 
 LOGGER = logging.getLogger(__name__)
@@ -64,9 +67,19 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=500, detail="generation failed") from exc
         return GenerationResponse(images=images)
 
+    @app.post("/publish", response_model=PublishResponse)
+    async def publish(payload: PublishRequest) -> PublishResponse:
+        loop = asyncio.get_event_loop()
+        try:
+            return await loop.run_in_executor(None, publish_yokai, payload)
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except Exception as exc:  # noqa: BLE001
+            LOGGER.exception("Publish failed: %s", exc)
+            raise HTTPException(status_code=500, detail="publish failed") from exc
+
     return app
 
 
 app = create_app()
-# the script didn't import list functions - let's continue in next call
 
